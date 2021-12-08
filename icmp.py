@@ -39,7 +39,7 @@ class ICMPPacket(object):
     def parse(cls, packet):
         ip_pack_str = "BBHHHBBH4s4s"
         icmp_pack_str = "!BBHHH4sH"
-        data = ""
+        data = b""
 
         ip_packet, icmp_packet = packet[:20], packet[20:] # split ip header
 
@@ -59,28 +59,3 @@ class ICMPPacket(object):
         return cls(type, code, checksum, id, sequence, data,
                    socket.inet_ntoa(source_ip),
                    (socket.inet_ntoa(dest_ip), dest_port))
-
-
-    @staticmethod
-    def _checksum(packet):
-        csum = 0
-        countTo = (len(packet) / 2) * 2
-        count = 0
-
-        while count < countTo:
-            print(f'{count}, {len(packet)}')
-            thisVal = packet[count+1] * 256 + packet[count]
-            csum = csum + thisVal
-            csum = csum & 0xffffffff
-            count = count + 2
-
-        if countTo < len(packet):
-            csum = csum + ord(packet[len(packet) - 1])
-            csum = csum & 0xffffffff
-
-        csum = (csum >> 16) + (csum & 0xffff)
-        csum = csum + (csum >> 16)
-        checksum = ~csum
-        checksum = checksum & 0xffff
-        checksum = checksum >> 8 | (checksum << 8 & 0xff00)
-        return checksum

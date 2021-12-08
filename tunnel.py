@@ -4,6 +4,8 @@ import select
 import socket
 import threading
 
+PROXY_CLIENT_LISTENING_HOST = '127.0.0.1'
+
 TCP_BUFFER_SIZE = 2 ** 10
 ICMP_BUFFER_SIZE = 65565
 
@@ -122,9 +124,9 @@ class ProxyClient(Tunnel, threading.Thread):
 
 
 class Proxy(ProxyClient):
-    def __init__(self, proxy, local_host, local_port, dest_host, dest_port):
+    def __init__(self, proxy, listen_port, dest_host, dest_port):
         self.proxy = proxy
-        self.local = (local_host, local_port)
+        self.local = (PROXY_CLIENT_LISTENING_HOST, listen_port)
         self.dest = (dest_host, dest_port)
         self.tcp_server_socket = self.create_tcp_socket(self.local, server=True)
 
@@ -139,31 +141,27 @@ class Proxy(ProxyClient):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="pptunnel, python ping tunnel, send your tcp traffic over icmp",
-        usage="""Needs to be runned as root (use of raw sockets)
-  Client side: pptunnel -p <proxy_host> -lp <proxy_port> -dh <dest_host> -dp <dest_port>
-  Proxy side: pptunnel -s""",
-        epilog="""
+        description="ICMP tunnel for TCP traffic",
+        usage="""
+        client: sudo python3 tunnel.py -p <proxy_host> -lp <listen_port> -d <dst_host> -dp <dst_port>
+        proxy: tunnel.py -s
+        
 Example:
-We want to connect in ftp to google.com:21 via our server proxy.server.com
-  Client : sudo python pptunnel -p proxy.server.com -lp 8000 -dh google.com -dp 21
-  Proxy  : sudo python pptunnel -s 
-  Client : ftp localhost 8000"""
+        client: sudo python tunnel.py -p 192.168.68.118 -lp 1337 -d google.com -dp 80
+        proxy: sudo python tunnel.py -s 
+        nc 127.0.0.1 1337
+"""
     )
 
-    parser.add_argument("-s", "--server", action="store_true", default=False,
-                        help="Set proxy mode")
+    parser.add_argument("-s", "--server", action="store_true", default=False)
     parser.add_argument("-p", "--proxy_host",
-                        help="Host on which the proxy is running")
-    parser.add_argument("-lh", "--local_host", default="127.0.0.1",
-                        help="(local) Listen ip for incomming TCP connections,"\
-                        "default 127.0.0.1")
-    parser.add_argument("-lp", "--local_port", type=int,
-                        help="(local) Listen port for incomming TCP connections")
-    parser.add_argument("-dh", "--destination_host",
-                        help="Specifies the remote host to send your TCP connection")
-    parser.add_argument("-dp", "--destination_port", type=int,
-                        help="Specifies the remote port to send your TCP connection")
+                        help="Address of the proxy server")
+    parser.add_argument("-lp", "--listen_port", type=int,
+                        help="Port to bind for incoming TCP connections from proxy users")
+    parser.add_argument("-d", "--dst_host",
+                        help="dst host to connect to using TCP")
+    parser.add_argument("-dp", "--dst_port", type=int,
+                        help="Remote port to connect to using TCP")
 
     args = parser.parse_args()
 
@@ -171,9 +169,8 @@ We want to connect in ftp to google.com:21 via our server proxy.server.com
         tunnel = Server()
     else:
         tunnel = Proxy(
-            proxy=args.proxy_host,
-            local_host=args.local_host, local_port=args.local_port,
-            dest_host=args.destination_host, dest_port=args.destination_port
+            proxy=args.proxy_host, listen_port=args.listen_port,
+            dest_host=args.dst_host, dest_port=args.dst_port
         )
 
     tunnel.run()
