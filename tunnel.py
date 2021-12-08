@@ -10,29 +10,26 @@ ICMP_BUFFER_SIZE = 65565
 class Tunnel(object):
     @staticmethod
     def create_icmp_socket():
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-        except socket.error as e:
-            raise
+        print("[Tunnel] Creating ICMP socket")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
         return sock
 
     @staticmethod
     def create_tcp_socket(dest, server=False):
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.bind(dest) if server else sock.connect(dest)
-        except socket.error as e:
-            raise
+        print("[Tunnel] Creating TCP socket")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(dest) if server else sock.connect(dest)
         return sock
 
     def icmp_data_handler(self, sock):
-        raise NotImplementedError
+        print(f"[Tunnel] icmp_data_handler: {sock.recv()}")
 
     def tcp_data_handler(self, sock):
-        raise NotImplementedError
+        print(f"[Tunnel] tcp_data_handler: {sock.recv()}")
 
     def run(self):
+        print("[Tunnel] main loop")
         while True:
             sread, _, _ = select.select(self.sockets, [], [])
             for sock in sread:
@@ -49,35 +46,40 @@ class Server(Tunnel):
         self.sockets = [self.icmp_socket]
 
     def icmp_data_handler(self, sock):
+        print("[Server] ICMP data handler")
         packet, addr = self.icmp_socket.recvfrom(ICMP_BUFFER_SIZE)
+        print(f"[Server] Received packet from {addr}")
         try:
             packet = icmp.ICMPPacket.parse(packet)
         except ValueError:
             print("Malformated packet")
             return
+        print(f"[Server] Parsed packet {packet}")
         self.source = addr[0]
         self.dest = packet.dest
-        if packet.type == icmp.ICMP_ECHO and packet.code == 0:
-            # our packet, do nothing
-            pass
-        elif packet.type == icmp.ICMP_ECHO_REQUEST and packet.code == 1:
-            # control
+        if packet.type == icmp.ICMP_ECHO and packet.code == 1:
+            # Close the connection with the client
+            print(f"[Server] Parsed packet from client {packet}. He wants to disconnect :( ")
             self.sockets.remove(self.tcp_socket)
             self.tcp_socket.close()
             self.tcp_socket = None
         else:
+            # If it's our packet, do nothing
             if not self.tcp_socket:
+                print("[Server] Creating new TCP socket")
                 self.tcp_socket = self.create_tcp_socket(self.dest)
                 self.sockets.append(self.tcp_socket)
+            print("[Server] Sending data from client over TCP socket")
             self.tcp_socket.send(packet.data)
 
     def tcp_data_handler(self, sock):
+        print("[Server] Received data on TCP socket")
         sdata = sock.recv(TCP_BUFFER_SIZE)
         new_packet = icmp.ICMPPacket(icmp.ICMP_ECHO, 0, 0, 0, 0,
                                      sdata, self.source, self.dest)
         packet = new_packet.create()
+        print("[Server] Sending received data over ICMP connection")
         self.icmp_socket.sendto(packet, (self.source, 0))
-
 
 
 class ProxyClient(Tunnel, threading.Thread):
@@ -90,6 +92,7 @@ class ProxyClient(Tunnel, threading.Thread):
         self.sockets = [self.tcp_socket, self.icmp_socket]
 
     def icmp_data_handler(self, sock):
+        print("[ProxyClient] icmp_data_handler")
         sdata = sock.recvfrom(ICMP_BUFFER_SIZE)
         try:
             packet = icmp.ICMPPacket.parse(sdata[0])
@@ -97,19 +100,24 @@ class ProxyClient(Tunnel, threading.Thread):
             # Bad packet, malformated, not our, EOF etc..
             return
         if packet.type != icmp.ICMP_ECHO_REQUEST:
+            print("[ProxyClient] Parsed ICMP packet from proxy server")
             self.tcp_socket.send(packet.data)
 
     def tcp_data_handler(self, sock):
+        print("[ProxyClient] tcp_data_handler")
         sdata = sock.recv(TCP_BUFFER_SIZE)
         # if no data the socket may be closed/timeout/EOF
         len_sdata = len(sdata)
         code = 0 if len_sdata > 0 else 1
+        print("sending packet")
         new_packet = icmp.ICMPPacket(
             icmp.ICMP_ECHO_REQUEST, code, 0, 0, 0,
             sdata, self.tcp_socket.getsockname(), self.dest)
         packet = new_packet.create()
+        print("[ProxyClient] sending ICMP packet to proxy server")
         self.icmp_socket.sendto(packet, (self.proxy, 1))
         if code == 1:
+            print("[ProxyClient] Disconnected")
             exit() #exit thread
 
 
@@ -121,6 +129,7 @@ class Proxy(ProxyClient):
         self.tcp_server_socket = self.create_tcp_socket(self.local, server=True)
 
     def run(self):
+        print("[Proxy] Entering main loop")
         while True:
             self.tcp_server_socket.listen(5)
             sock, addr = self.tcp_server_socket.accept()

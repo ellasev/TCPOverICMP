@@ -25,7 +25,7 @@ class ICMPPacket(object):
     def create(self):
         pack_str = "!BBHHH4sH"
         pack_args = [self.type, self.code, 0, self.id, self.sequence,
-                     socket.inet_aton(self.dest[0]), self.dest[1]]
+                     socket.inet_aton(socket.gethostbyname(self.dest[0])), self.dest[1]]
 
         if self.length:
             pack_str += "{}s".format(self.length)
@@ -68,7 +68,8 @@ class ICMPPacket(object):
         count = 0
 
         while count < countTo:
-            thisVal = ord(packet[count+1]) * 256 + ord(packet[count])
+            print(f'{count}, {len(packet)}')
+            thisVal = packet[count+1] * 256 + packet[count]
             csum = csum + thisVal
             csum = csum & 0xffffffff
             count = count + 2
