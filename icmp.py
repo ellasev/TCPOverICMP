@@ -70,12 +70,12 @@ class ICMPPacket(object):
         while count < countTo:
             thisVal = ord(packet[count+1]) * 256 + ord(packet[count])
             csum = csum + thisVal
-            csum = csum & 0xffffffffL
+            csum = csum & 0xffffffff
             count = count + 2
 
         if countTo < len(packet):
             csum = csum + ord(packet[len(packet) - 1])
-            csum = csum & 0xffffffffL
+            csum = csum & 0xffffffff
 
         csum = (csum >> 16) + (csum & 0xffff)
         csum = csum + (csum >> 16)
