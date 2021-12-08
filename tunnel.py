@@ -1,8 +1,11 @@
 import argparse
+import struct
+
 import icmp
 import select
 import socket
 import threading
+from scapy.all import IP, ICMP, send
 
 PROXY_CLIENT_LISTENING_HOST = '127.0.0.1'
 
@@ -33,8 +36,8 @@ class Tunnel(object):
     def run(self):
         print("[Tunnel] main loop")
         while True:
-            sread, _, _ = select.select(self.sockets, [], [])
-            for sock in sread:
+            read, _, _ = select.select(self.sockets, [], [])
+            for sock in read:
                 if sock.proto == socket.IPPROTO_ICMP:
                     self.icmp_data_handler(sock)
                 else:
@@ -82,8 +85,14 @@ class Server(Tunnel):
         data = sock.recv(TCP_BUFFER_SIZE)
         packet = icmp.ICMPPacket(icmp_type=icmp.ICMP_ECHO, code=0, src_ip=self.src, dst_host=self.dst_host,
                                  dst_port=self.dst_port, data=data).create()
+
+        new_packet = IP(dst=socket.gethostbyname(self.dst_host)) / ICMP(type=icmp.ICMP_ECHO) / \
+                     (struct.pack("4sH", socket.inet_aton(socket.gethostbyname(self.dst_host)), self.dst_port) + data)
+        print(f"OLD {packet}")
+        print(f"NEW {new_packet}")
         print("[Server] Sending received data over ICMP connection")
-        self.icmp_socket.sendto(packet, (self.src, 0))
+        #self.icmp_socket.sendto(packet, (self.src, 0))
+        send(new_packet)
 
 
 class ProxyClient(Tunnel, threading.Thread):
@@ -116,8 +125,14 @@ class ProxyClient(Tunnel, threading.Thread):
         print("sending packet")
         packet = icmp.ICMPPacket(icmp_type=icmp.ICMP_ECHO_REQUEST, code=code, src_ip=self.tcp_socket.getsockname(),
                                  dst_host=self.dst_host, dst_port=self.dst_port, data=data).create()
+        new_packet = IP(dst=socket.gethostbyname(self.dst_host)) / ICMP(type=icmp.ICMP_ECHO_REQUEST) / \
+                     (struct.pack("4sH", socket.inet_aton(socket.gethostbyname(self.dst_host)), self.dst_port) + data)
+        print(f"OLD {packet}")
+        print(f"NEW {new_packet}")
+
         print("[ProxyClient] sending ICMP packet to proxy server")
-        self.icmp_socket.sendto(packet, (self.proxy, 1))
+        #self.icmp_socket.sendto(packet, (self.proxy, 1))
+        send(new_packet)
         if code == 1:
             print("[ProxyClient] Disconnected")
             exit()

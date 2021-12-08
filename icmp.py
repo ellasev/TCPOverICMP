@@ -1,5 +1,6 @@
 import socket
 import struct
+from scapy.all import IP, ICMP
 
 ICMP_ECHO = 0
 ICMP_ECHO_REQUEST = 8
