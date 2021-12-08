@@ -4,28 +4,26 @@ import struct
 ICMP_ECHO = 0
 ICMP_ECHO_REQUEST = 8
 
+IP_HEADER_FORMAT = "BBHHHBBH4s4s"
+ICMP_HEADER_FORMAT = "!BBHHH4sH"
+
 class ICMPPacket(object):
-    def __init__(self, type, code, checksum, id,
-                 sequence, data, source_ip, dest=(None, None)):
-        self.type, self.code, self.checksum = type, code, checksum
-        self.id, self.sequence, self.data = id, sequence, data
-        self.dest = dest
-        self.source_ip = source_ip
+    def __init__(self, icmp_type, code, checksum, packet_id,
+                 sequence, data, src_ip, dst=(None, None)):
+        self.icmp_type = icmp_type
+        self.code = code
+        self.checksum = checksum
+        self.packet_id = packet_id
+        self.sequence = sequence
+        self.data = data
+        self.dst_ip, self.dst_port = dst
+        self.src_ip = src_ip
         self.length = len(self.data)
-
-    def __repr__(self):
-        return "<ICMP packet: type = {s.type}, code = {s.code}, " \
-            "data length = {length}".format(s=self, length=len(self.data))
-
-    def __str__(self):
-        return "Type of message: {s.type}, Code {s.code},"\
-            "Checksum: {s.checksum}, ID: {s.id}, Sequence: {s.sequence}, " \
-            "Data: {s.data}, Data length: {length}".format(s=self, length=len(self.data))
 
     def create(self):
         pack_str = "!BBHHH4sH"
-        pack_args = [self.type, self.code, 0, self.id, self.sequence,
-                     socket.inet_aton(socket.gethostbyname(self.dest[0])), self.dest[1]]
+        pack_args = [self.icmp_type, self.code, 0, self.packet_id, self.sequence,
+                     socket.inet_aton(socket.gethostbyname(self.dst_ip)), self.dst_port]
 
         if self.length:
             pack_str += "{}s".format(self.length)
@@ -37,25 +35,47 @@ class ICMPPacket(object):
 
     @classmethod
     def parse(cls, packet):
-        ip_pack_str = "BBHHHBBH4s4s"
-        icmp_pack_str = "!BBHHH4sH"
         data = b""
 
-        ip_packet, icmp_packet = packet[:20], packet[20:] # split ip header
+        ip_header, icmp_header = packet[:20], packet[20:] # split ip header
 
-        ip_packet = struct.unpack(ip_pack_str, ip_packet)
+        ip_header = struct.unpack(IP_HEADER_FORMAT, ip_header)
 
-        source_ip = ip_packet[8]
-        icmp_pack_len = struct.calcsize(icmp_pack_str)
-        packet_len = len(icmp_packet) - icmp_pack_len
+        src_ip = ip_header[8]
+        icmp_header_len = struct.calcsize(ICMP_HEADER_FORMAT)
+        data_len = len(icmp_header) - icmp_header_len
 
-        if packet_len > 0:
-            icmp_data_str = "{}s".format(packet_len)
-            data = struct.unpack(icmp_data_str, icmp_packet[icmp_pack_len:])[0]
+        if data_len > 0:
+            data = "{}s".format(data_len)
+            data = struct.unpack(data, icmp_header[icmp_header_len:])[0]
 
-        type, code, checksum, id, sequence, dest_ip, \
-            dest_port = struct.unpack(icmp_pack_str, icmp_packet[:icmp_pack_len])
+        icmp_type, code, checksum, packet_id, sequence, dst_ip, dst_port = \
+            struct.unpack(ICMP_HEADER_FORMAT, icmp_header[:icmp_header_len])
 
-        return cls(type, code, checksum, id, sequence, data,
-                   socket.inet_ntoa(source_ip),
-                   (socket.inet_ntoa(dest_ip), dest_port))
+        return cls(icmp_type, code, checksum, packet_id, sequence, data,
+                   socket.inet_ntoa(src_ip),
+                   (socket.inet_ntoa(dst_ip), dst_port))
+
+
+    @staticmethod
+    def _checksum(packet):
+        csum = 0
+        countTo = (len(packet) / 2) * 2
+        count = 0
+
+        while count < countTo:
+            thisVal = packet[count+1] * 256 + packet[count]
+            csum = csum + thisVal
+            csum = csum & 0xffffffff
+            count = count + 2
+
+        if countTo < len(packet):
+            csum = csum + ord(packet[len(packet) - 1])
+            csum = csum & 0xffffffff
+
+        csum = (csum >> 16) + (csum & 0xffff)
+        csum = csum + (csum >> 16)
+        checksum = ~csum
+        checksum = checksum & 0xffff
+        checksum = checksum >> 8 | (checksum << 8 & 0xff00)
+        return checksum

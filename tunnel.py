@@ -58,8 +58,8 @@ class Server(Tunnel):
             return
         print(f"[Server] Parsed packet {packet}")
         self.source = addr[0]
-        self.dest = packet.dest
-        if packet.type == icmp.ICMP_ECHO and packet.code == 1:
+        self.dest = (packet.dst_ip, packet.dst_port)
+        if packet.icmp_type == icmp.ICMP_ECHO and packet.code == 1:
             # Close the connection with the client
             print(f"[Server] Parsed packet from client {packet}. He wants to disconnect :( ")
             self.sockets.remove(self.tcp_socket)
@@ -77,9 +77,8 @@ class Server(Tunnel):
     def tcp_data_handler(self, sock):
         print("[Server] Received data on TCP socket")
         sdata = sock.recv(TCP_BUFFER_SIZE)
-        new_packet = icmp.ICMPPacket(icmp.ICMP_ECHO, 0, 0, 0, 0,
-                                     sdata, self.source, self.dest)
-        packet = new_packet.create()
+        packet = icmp.ICMPPacket(icmp.ICMP_ECHO, 0, 0, 0, 0,
+                                     sdata, self.source, self.dest).create()
         print("[Server] Sending received data over ICMP connection")
         self.icmp_socket.sendto(packet, (self.source, 0))
 
@@ -101,7 +100,7 @@ class ProxyClient(Tunnel, threading.Thread):
         except ValueError:
             # Bad packet, malformated, not our, EOF etc..
             return
-        if packet.type != icmp.ICMP_ECHO_REQUEST:
+        if packet.icmp_type != icmp.ICMP_ECHO_REQUEST:
             print("[ProxyClient] Parsed ICMP packet from proxy server")
             self.tcp_socket.send(packet.data)
 
