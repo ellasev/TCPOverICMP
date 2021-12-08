@@ -8,40 +8,35 @@ IP_HEADER_FORMAT = "BBHHHBBH4s4s"
 ICMP_HEADER_FORMAT = "!BBHHH4sH"
 
 class ICMPPacket(object):
-    def __init__(self, icmp_type, code, checksum, packet_id,
-                 sequence, data, src_ip, dst=(None, None)):
+    def __init__(self, icmp_type, code, src_ip, dst_host=None, dst_port=None, data=None):
         self.icmp_type = icmp_type
         self.code = code
-        self.checksum = checksum
-        self.packet_id = packet_id
-        self.sequence = sequence
-        self.data = data
-        self.dst_ip, self.dst_port = dst
         self.src_ip = src_ip
-        self.length = len(self.data)
+        self.dst_host = dst_host
+        self.dst_port = dst_port
+        self.data = data
 
     def create(self):
         pack_str = "!BBHHH4sH"
-        pack_args = [self.icmp_type, self.code, 0, self.packet_id, self.sequence,
-                     socket.inet_aton(socket.gethostbyname(self.dst_ip)), self.dst_port]
+        pack_args = [self.icmp_type, self.code, 0, 0, 0,
+                     socket.inet_aton(socket.gethostbyname(self.dst_host)), self.dst_port]
 
-        if self.length:
-            pack_str += "{}s".format(self.length)
+        if len(self.data):
+            pack_str += "{}s".format(len(self.data))
             pack_args.append(self.data)
 
-        self.checksum = self._checksum(struct.pack(pack_str, *pack_args)) 
-        pack_args[2] = self.checksum
+        checksum = self._checksum(struct.pack(pack_str, *pack_args))
+        pack_args[2] = checksum
         return struct.pack(pack_str, *pack_args)
 
     @classmethod
     def parse(cls, packet):
         data = b""
 
-        ip_header, icmp_header = packet[:20], packet[20:] # split ip header
-
+        ip_header, icmp_header = packet[:20], packet[20:]
         ip_header = struct.unpack(IP_HEADER_FORMAT, ip_header)
-
         src_ip = ip_header[8]
+
         icmp_header_len = struct.calcsize(ICMP_HEADER_FORMAT)
         data_len = len(icmp_header) - icmp_header_len
 
@@ -49,33 +44,20 @@ class ICMPPacket(object):
             data = "{}s".format(data_len)
             data = struct.unpack(data, icmp_header[icmp_header_len:])[0]
 
-        icmp_type, code, checksum, packet_id, sequence, dst_ip, dst_port = \
+        icmp_type, code, checksum, packet_id, sequence, dst_host, dst_port = \
             struct.unpack(ICMP_HEADER_FORMAT, icmp_header[:icmp_header_len])
 
-        return cls(icmp_type, code, checksum, packet_id, sequence, data,
-                   socket.inet_ntoa(src_ip),
-                   (socket.inet_ntoa(dst_ip), dst_port))
-
+        return cls(icmp_type, code, socket.inet_ntoa(src_ip), socket.inet_ntoa(dst_host), dst_port, data)
 
     @staticmethod
-    def _checksum(packet):
-        csum = 0
-        countTo = (len(packet) / 2) * 2
-        count = 0
+    def _checksum(data):
+        checksum = 0
+        data += b'\x00'
 
-        while count < countTo:
-            thisVal = packet[count+1] * 256 + packet[count]
-            csum = csum + thisVal
-            csum = csum & 0xffffffff
-            count = count + 2
+        for i in range(0, len(data) - 1, 2):
+            checksum += (data[i] << 8) + data[i + 1]
+            checksum = (checksum & 0xffff) + (checksum >> 16)
 
-        if countTo < len(packet):
-            csum = csum + ord(packet[len(packet) - 1])
-            csum = csum & 0xffffffff
+        checksum = ~checksum & 0xffff
 
-        csum = (csum >> 16) + (csum & 0xffff)
-        csum = csum + (csum >> 16)
-        checksum = ~csum
-        checksum = checksum & 0xffff
-        checksum = checksum >> 8 | (checksum << 8 & 0xff00)
         return checksum
