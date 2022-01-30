@@ -59,7 +59,7 @@ class IcmpServer():
 
     @staticmethod
     def build_icmp_packet(icmp_type, dst_host, remote_dst_host='0.0.0.0', remote_dst_port=0, data=''):
-        import ipdb; ipdb.set_trace()
+        import ipdb; ipdb.set_trace()  
         payload = struct.pack("4sHs", socket.inet_aton(remote_dst_host), remote_dst_port,  data)
         packet = IP(dst = dst_host) / ICMP(id=ICMP_ID, type=icmp_type) / payload
         pass
