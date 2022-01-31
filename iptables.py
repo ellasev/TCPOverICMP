@@ -7,8 +7,8 @@ from abc import ABC
 from consts import DROP_TABLE, ICMP_PROTOCOL, INPUT_TABLE, LOOPBACK_DEVICE, LOOPBACK_IP, OUTPUT_TABLE, TCP_PROTOCOL
     
 class IPTablesRule(ABC):
-	def __init__(self, *args):
-		self.rule: Rule  = self._create_rule(*args)
+	def __init__(self):
+		self.rule: Rule  = self._create_rule()
 		self.chain: Rule = self._get_chain()
 
 	def _create_rule(self) -> Rule:
@@ -30,13 +30,14 @@ class IPTablesICMPRule(IPTablesRule):
 	Class for IPTable rules that drops ICMP packets
 	"""
 	def __init__(self, ip: IPv4Address):
+		self.ip = ip
 		super().__init__(ip=ip)
 
-	def _create_rule(self, ip: IPv4Address) -> Rule:
+	def _create_rule(self) -> Rule:
 		rule = Rule()
 		rule.protocol = ICMP_PROTOCOL
 		rule.create_target(DROP_TABLE)
-		rule.dst = ip
+		rule.dst = self.ip
 		return rule
 
 	def _get_chain(self) -> Chain:
@@ -48,9 +49,11 @@ class IPTablesLoopbackRule(IPTablesRule):
 	Class for IPTable rules that drop TCP packets on loopback device
 	"""
 	def __init__(self, port: int, is_server: bool):
-		super().__init__(port=port, is_server=is_server)
+		self.port = port
+		self.is_server = is_server
+		super().__init__()
 
-	def _create_rule(self, port: int, is_server: bool) -> Rule:
+	def _create_rule(self) -> Rule:
 		"""
 		Create rule that drops TCP packets on loopback device from/to specific TCP port
 		"""
@@ -62,10 +65,10 @@ class IPTablesLoopbackRule(IPTablesRule):
 		rule.create_target(DROP_TABLE)
 		match = rule.create_match(TCP_PROTOCOL)
 
-		if is_server:
-			match.sport = str(port)
+		if self.is_server:
+			match.sport = str(self.port)
 		else:
-			match.dport = str(port)
+			match.dport = str(self.port)
 		
 		return rule
 
