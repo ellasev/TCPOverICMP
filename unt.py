@@ -4,7 +4,7 @@ import struct
 import select
 import socket
 import threading
-from scapy.all import IP, ICMP, send
+from scapy.all import *
 
 ICMP_BUFFER_SIZE = 1024
 TCP_BUFFER_SIZE = 1024
@@ -53,16 +53,16 @@ class IcmpServer():
             return
 
         parsed_packet = ParsedPacket(icmp_type = packet[ICMP].type, src_host = packet[IP].src)
-        parsed_packet.remote_dst_host, parsed_packet.remote_dst_port, parsed_packet.data = struct.unpack("4sHs", packet[ICMP].payload)
+        parsed_packet.remote_dst_host, parsed_packet.remote_dst_port = struct.unpack("4sH", packet[ICMP].payload)
+        parsed_packet.data = packet[ICMP][struct.calcsize("4sH"):]
 
         return parsed_packet
 
     @staticmethod
     def build_icmp_packet(icmp_type, dst_host, remote_dst_host='0.0.0.0', remote_dst_port=0, data=''):
-        import ipdb; ipdb.set_trace()  
-        payload = struct.pack("4sHs", socket.inet_aton(remote_dst_host), remote_dst_port,  data)
-        packet = IP(dst = dst_host) / ICMP(id=ICMP_ID, type=icmp_type) / payload
-        pass
+        payload = struct.pack("4sH", socket.inet_aton(remote_dst_host), remote_dst_port) + data
+        return IP(dst = dst_host) / ICMP(id=ICMP_ID, type=icmp_type) / payload
+        
 
 
 class ProxyServer(Tunnel):
