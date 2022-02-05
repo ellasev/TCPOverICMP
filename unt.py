@@ -9,7 +9,7 @@ from scapy.all import *
 ICMP_BUFFER_SIZE = 1024
 TCP_BUFFER_SIZE = 1024
 ICMP_ID = 2610
-ICMP_ECHO = 0
+ICMP_ECHO_REPLY = 0
 ICMP_ECHO_REQUEST = 8
 
 class Tunnel(threading.Thread):
@@ -51,8 +51,12 @@ class IcmpServer():
         assert packet[ICMP].id == ICMP_ID, "Wrong ICMP ID"
 
         parsed_packet = ParsedPacket(icmp_type = packet[ICMP].type, src_host = packet[IP].src)
-        parsed_packet.remote_dst_host, parsed_packet.remote_dst_port = struct.unpack("4sH", packet[ICMP].payload)
-        parsed_packet.data = packet[ICMP][struct.calcsize("4sH"):]
+        struct_size = struct.calcsize("4sH")
+        payload = bytes(packet[ICMP].payload)
+
+        parsed_packet.remote_dst_host, parsed_packet.remote_dst_port = struct.unpack("4sH", payload[:struct_size])
+        parsed_packet.data = payload[struct_size:]
+        parsed_packet.remote_dst_host = socket.inet_ntoa(parsed_packet.remote_dst_host)
 
         return parsed_packet
 
@@ -71,11 +75,11 @@ class ProxyServer(Tunnel):
 
         Tunnel.__init__(self)
 
-    def _create_tcp_socket(self, dst_host, dst_port):
+    def _create_tcp_socket(self, remote_dst_host, remote_dst_port):
         print("[ProxyServer] Creating new TCP socket")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.connect((dst_host, dst_port))
+        sock.connect((remote_dst_host, remote_dst_port))
 
         return sock
 
@@ -94,18 +98,22 @@ class ProxyServer(Tunnel):
             print(f"[ProxyServer] Parsed packet {packet}")
 
             self.proxy_client_host = packet.src_host
-            self.dst_host = packet.dst_host
-            self.dst_port = packet.dst_port
-            if packet.icmp_type == ICMP_ECHO:
+            self.remote_dst_host = packet.remote_dst_host
+            self.remote_dst_port = packet.remote_dst_port
+            if packet.icmp_type == ICMP_ECHO_REQUEST:
                 if len(packet.data) == 0:
                     self._close_conenction()
                 else:
                     if not self.tcp_socket:
-                        self.tcp_socket = self._create_tcp_socket(self.dst_host, self.dst_port)
+                        print(self.remote_dst_host, self.remote_dst_port)
+                        self.tcp_socket = self._create_tcp_socket(self.remote_dst_host, self.remote_dst_port)
                         self.sockets.append(self.tcp_socket)
                     print("[ProxyServer] Sending data from client over TCP socket")
                     self.tcp_socket.send(packet.data)
-        except:
+            else:
+                print(f'Wrong ICMP type: {packet.icmp_type}')
+        except Exception as e:
+            print(e)
             pass
 
     def tcp_data_handler(self, sock):
