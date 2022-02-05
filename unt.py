@@ -1,4 +1,5 @@
 import argparse
+from logging import exception
 import struct
 
 import select
@@ -6,6 +7,8 @@ import socket
 import threading
 import traceback
 from scapy.all import *
+
+from iptables import IPTableManager, IPTablesICMPRule, IPTablesLoopbackRule
 
 ICMP_BUFFER_SIZE = 1024
 TCP_BUFFER_SIZE = 1024
@@ -22,13 +25,18 @@ class Tunnel(threading.Thread):
 
     def run(self):
         print("[Tunnel] main loop")
-        while True:
-            read, _, _ = select.select(self.sockets, [], [])
-            for sock in read:
-                if sock.proto == socket.IPPROTO_ICMP:
-                    self.icmp_data_handler(sock)
-                else:
-                    self.tcp_data_handler(sock)
+        with IPTableManager() as ip_table_manager:
+            print(self.proxy_icmp_socket.getsockname())
+            icmp_rule = IPTablesICMPRule(ip=self.proxy_icmp_socket.getsockname()[0])
+            ip_table_manager.add_rule(icmp_rule)
+
+            while True:
+                read, _, _ = select.select(self.sockets, [], [])
+                for sock in read:
+                    if sock.proto == socket.IPPROTO_ICMP:
+                        self.icmp_data_handler(sock, ip_table_manager)
+                    else:
+                        self.tcp_data_handler(sock)
 
 class ParsedPacket():
     def __init__(self, icmp_type, src_host):
@@ -90,7 +98,7 @@ class ProxyServer(Tunnel):
         self.tcp_socket.close()
         self.tcp_socket = None
 
-    def icmp_data_handler(self, sock):
+    def icmp_data_handler(self, sock, ip_table_handler:IPTableManager):
         print("[ProxyServer] ICMP data handler")
         assert sock == self.proxy_icmp_socket, "WTF"
 
@@ -108,6 +116,8 @@ class ProxyServer(Tunnel):
                 else:
                     if not self.tcp_socket:
                         self.tcp_socket = self._create_tcp_socket(self.remote_dst_host, self.remote_dst_port)
+                        rule = IPTablesLoopbackRule(self.remote_dst_host, is_server=True)
+                        ip_table_handler.add_rule(rule)
                         self.sockets.append(self.tcp_socket)
                     print("[ProxyServer] Sending data from client over TCP socket")
                     self.tcp_socket.send(packet.data)
@@ -205,12 +215,16 @@ class ProxyClient():
     def run(self):
         # main loop
         print("[ProxyClient] Entering main loop")
-        while True:
-            self.proxy_tcp_socket.listen(5)
-            sock, addr = self.proxy_tcp_socket.accept()
-            print("[ProxyClient] New connection!")
-            new_thread = ProxyClientThread(self.proxy_server_host, sock, self.proxy_icmp_socket, self.remote_server_host, self.remote_server_port)
-            new_thread.start()
+        with IPTableManager() as ip_table:
+            rule = IPTablesLoopbackRule(port=self.proxy_tcp_socket.getsockname()[1], is_server=False)
+            ip_table.add_rule(rule)
+            while True:
+                self.proxy_tcp_socket.listen(5)
+                sock, addr = self.proxy_tcp_socket.accept()
+                print("[ProxyClient] New connection!")
+                new_thread = ProxyClientThread(self.proxy_server_host, sock, self.proxy_icmp_socket, self.remote_server_host, self.remote_server_port)
+                new_thread.start()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
