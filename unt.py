@@ -10,8 +10,8 @@ from scapy.all import *
 
 from iptables import IPTableManager, IPTablesICMPRule, IPTablesLoopbackRule
 
-ICMP_BUFFER_SIZE = 1024
-TCP_BUFFER_SIZE = 1024
+ICMP_BUFFER_SIZE = 2024
+TCP_BUFFER_SIZE = 2024
 ICMP_ID = 2610
 ICMP_ECHO_REPLY = 0
 ICMP_ECHO_REQUEST = 8
@@ -116,8 +116,8 @@ class ProxyServer(Tunnel):
                 else:
                     if not self.tcp_socket:
                         self.tcp_socket = self._create_tcp_socket(self.remote_dst_host, self.remote_dst_port)
-                        rule = IPTablesLoopbackRule(self.remote_dst_host, is_server=True)
-                        ip_table_handler.add_rule(rule)
+                        #rule = IPTablesLoopbackRule(self.remote_dst_host, is_server=True)
+                        #ip_table_handler.add_rule(rule)
                         self.sockets.append(self.tcp_socket)
                     print("[ProxyServer] Sending data from client over TCP socket")
                     self.tcp_socket.send(packet.data)
@@ -162,7 +162,7 @@ class ProxyClientThread(Tunnel):
         self.tcp_socket.close()
         exit()
 
-    def icmp_data_handler(self, sock):
+    def icmp_data_handler(self, sock, ip_table_handler:IPTableManager):
         print("[ProxyClientThread] icmp_data_handler")
         assert sock == self.proxy_icmp_socket, "WTF"
         try:
@@ -216,8 +216,8 @@ class ProxyClient():
         # main loop
         print("[ProxyClient] Entering main loop")
         with IPTableManager() as ip_table:
-            rule = IPTablesLoopbackRule(port=self.proxy_tcp_socket.getsockname()[1], is_server=False)
-            ip_table.add_rule(rule)
+            #rule = IPTablesLoopbackRule(port=self.proxy_tcp_socket.getsockname()[1], is_server=False)
+            #ip_table.add_rule(rule)
             while True:
                 self.proxy_tcp_socket.listen(5)
                 sock, addr = self.proxy_tcp_socket.accept()
