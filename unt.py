@@ -4,6 +4,7 @@ import struct
 import select
 import socket
 import threading
+import traceback
 from scapy.all import *
 
 ICMP_BUFFER_SIZE = 1024
@@ -113,6 +114,7 @@ class ProxyServer(Tunnel):
             else:
                 print(f'Wrong ICMP type: {packet.icmp_type}')
         except Exception as e:
+            print(traceback.format_exc())
             print(e)
             pass
 
