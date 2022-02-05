@@ -8,7 +8,7 @@ from scapy.all import *
 
 ICMP_BUFFER_SIZE = 1024
 TCP_BUFFER_SIZE = 1024
-ICMP_ID = 103
+ICMP_ID = 2610
 ICMP_ECHO = 0
 ICMP_ECHO_REQUEST = 8
 
@@ -48,9 +48,7 @@ class IcmpServer():
     @staticmethod
     def parse_icmp_packet(data):
         packet = IP(data)
-        if packet[ICMP].id != ICMP_ID:
-            print("Wrong ICMP ID")
-            return
+        assert packet[ICMP].id == ICMP_ID, "Wrong ICMP ID"
 
         parsed_packet = ParsedPacket(icmp_type = packet[ICMP].type, src_host = packet[IP].src)
         parsed_packet.remote_dst_host, parsed_packet.remote_dst_port = struct.unpack("4sH", packet[ICMP].payload)
@@ -61,7 +59,7 @@ class IcmpServer():
     @staticmethod
     def build_icmp_packet(icmp_type, dst_host, remote_dst_host='0.0.0.0', remote_dst_port=0, data=''):
         payload = struct.pack("4sH", socket.inet_aton(remote_dst_host), remote_dst_port) + data
-        return IP(dst = dst_host) / ICMP(id=ICMP_ID, type=icmp_type) / payload
+        return IP(dst = dst_host) / ICMP(id=ICMP_ID, type=icmp_type, seq=1) / payload
         
 
 
@@ -91,21 +89,24 @@ class ProxyServer(Tunnel):
         print("[ProxyServer] ICMP data handler")
         assert sock == self.proxy_icmp_socket, "WTF"
 
-        packet = IcmpServer.parse_icmp_packet(self.proxy_icmp_socket.recvfrom(ICMP_BUFFER_SIZE))
-        print(f"[ProxyServer] Parsed packet {packet}")
+        try:
+            packet = IcmpServer.parse_icmp_packet(self.proxy_icmp_socket.recvfrom(ICMP_BUFFER_SIZE)[0])
+            print(f"[ProxyServer] Parsed packet {packet}")
 
-        self.proxy_client_host = packet.src_host
-        self.dst_host = packet.dst_host
-        self.dst_port = packet.dst_port
-        if packet.icmp_type == ICMP_ECHO:
-            if len(packet.data) == 0:
-                self._close_conenction()
-            else:
-                if not self.tcp_socket:
-                    self.tcp_socket = self.create_tcp_socket(self.dst_host, self.dst_port)
-                    self.sockets.append(self.tcp_socket)
-                print("[ProxyServer] Sending data from client over TCP socket")
-                self.tcp_socket.send(packet.data)
+            self.proxy_client_host = packet.src_host
+            self.dst_host = packet.dst_host
+            self.dst_port = packet.dst_port
+            if packet.icmp_type == ICMP_ECHO:
+                if len(packet.data) == 0:
+                    self._close_conenction()
+                else:
+                    if not self.tcp_socket:
+                        self.tcp_socket = self._create_tcp_socket(self.dst_host, self.dst_port)
+                        self.sockets.append(self.tcp_socket)
+                    print("[ProxyServer] Sending data from client over TCP socket")
+                    self.tcp_socket.send(packet.data)
+        except:
+            pass
 
     def tcp_data_handler(self, sock):
         print("[ProxyServer] Received data on TCP socket")
@@ -135,12 +136,13 @@ class ProxyClientThread(Tunnel):
         assert sock == self.proxy_icmp_socket, "WTF"
         try:
             packet = IcmpServer.parse_icmp_packet(self.proxy_icmp_socket.recvfrom(ICMP_BUFFER_SIZE)[0])
+
+            if packet.icmp_type == ICMP_ECHO_REPLY:
+                print("[ProxyClientThread] Parsed ICMP packet from proxy server")
+                self.tcp_socket.send(packet.data)
         except ValueError:
             # Bad packet, malformated, not our, EOF etc..
             return
-        if packet.icmp_type == ICMP_ECHO_REPLY:
-            print("[ProxyClientThread] Parsed ICMP packet from proxy server")
-            self.tcp_socket.send(packet.data)
 
     def tcp_data_handler(self, sock):
         print("[ProxyClientThread] tcp_data_handler")
