@@ -1,6 +1,3 @@
-from ipaddress import IPv4Address, ip_address
-import ipaddress
-from typing import Optional
 from iptc import Chain, Rule, Table
 from abc import ABC
 
@@ -17,27 +14,41 @@ class IPTablesRule(ABC):
 	def _get_chain(self) -> Chain:
 		raise NotImplementedError
 
-	def __enter__(self):
+	def apply(self):
 		self.chain.insert_rule(self.rule)
 
-	def __exit__(self):	
+	def delete(self):	
 		self.chain.delete_rule(self.rule)
 
+class IPTableManager():
+	def __init__(self):
+		self.rules_list = []
+	
+	def add_rule(self, rule:IPTablesRule):
+		self.rules_list.append(rule)
+		rule.apply()
+	
+	def __enter__(self):
+		return self
+
+	def __exit__(self, type, value, traceback):	
+		for rule in self.rules_list:
+			rule.delete()
 
 
 class IPTablesICMPRule(IPTablesRule):
 	"""
 	Class for IPTable rules that drops ICMP packets
 	"""
-	def __init__(self, ip: IPv4Address):
+	def __init__(self, ip: str):
 		self.ip = ip
-		super().__init__(ip=ip)
+		super().__init__()
 
 	def _create_rule(self) -> Rule:
 		rule = Rule()
 		rule.protocol = ICMP_PROTOCOL
 		rule.create_target(DROP_TABLE)
-		rule.dst = self.ip
+		#rule.src = self.ip
 		return rule
 
 	def _get_chain(self) -> Chain:
