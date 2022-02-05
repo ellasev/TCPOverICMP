@@ -85,7 +85,7 @@ class ProxyServer(Tunnel):
         return sock
 
     def _close_conenction(self):
-        print(f"[ProxyServer] Parsed packet from client {packet}. He wants to disconnect :( ")
+        print(f"[ProxyServer] Disconnecting")
         self.sockets.remove(self.tcp_socket)
         self.tcp_socket.close()
         self.tcp_socket = None
@@ -96,17 +96,17 @@ class ProxyServer(Tunnel):
 
         try:
             packet = IcmpServer.parse_icmp_packet(self.proxy_icmp_socket.recvfrom(ICMP_BUFFER_SIZE)[0])
-            print(f"[ProxyServer] Parsed packet {packet}")
+            print(f"[ProxyServer] Parsed packet")
 
             self.proxy_client_host = packet.src_host
             self.remote_dst_host = packet.remote_dst_host
             self.remote_dst_port = packet.remote_dst_port
             if packet.icmp_type == ICMP_ECHO_REQUEST:
                 if len(packet.data) == 0:
+                    print("[ProxyServer] Disconnect request received from client")
                     self._close_conenction()
                 else:
                     if not self.tcp_socket:
-                        print(self.remote_dst_host, self.remote_dst_port)
                         self.tcp_socket = self._create_tcp_socket(self.remote_dst_host, self.remote_dst_port)
                         self.sockets.append(self.tcp_socket)
                     print("[ProxyServer] Sending data from client over TCP socket")
@@ -122,13 +122,20 @@ class ProxyServer(Tunnel):
         print("[ProxyServer] Received data on TCP socket")
         assert sock == self.tcp_socket, "WTF"
 
-        data = self.tcp_socket.recv(TCP_BUFFER_SIZE)
+        try: 
+            data = self.tcp_socket.recv(TCP_BUFFER_SIZE)
+        except ConnectionResetError as e:
+            print(f"[ProxyClientThread] {e}")
+            data = b''
 
         print("[ProxyClientThread] Building ICMP packet")
         packet = IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REPLY, dst_host=self.proxy_client_host, data=data)
 
         print("[ProxyServer] Sending received data over ICMP connection")
         send(packet)
+
+        if len(data) == 0:
+            self._close_conenction()
 
 class ProxyClientThread(Tunnel):
     def __init__(self, proxy_server_host, tcp_socket, proxy_icmp_socket, remote_server_host, remote_server_port):
@@ -141,6 +148,10 @@ class ProxyClientThread(Tunnel):
 
         Tunnel.__init__(self)
 
+    def close(self):
+        self.tcp_socket.close()
+        exit()
+
     def icmp_data_handler(self, sock):
         print("[ProxyClientThread] icmp_data_handler")
         assert sock == self.proxy_icmp_socket, "WTF"
@@ -149,6 +160,9 @@ class ProxyClientThread(Tunnel):
 
             if packet.icmp_type == ICMP_ECHO_REPLY:
                 print("[ProxyClientThread] Parsed ICMP packet from proxy server")
+                if len(packet.data) == 0:
+                    print("[ProxyClientThread] Remote Host Disconnected")
+                    self.close()
                 self.tcp_socket.send(packet.data)
         except ValueError:
             # Bad packet, malformated, not our, EOF etc..
@@ -168,7 +182,7 @@ class ProxyClientThread(Tunnel):
 
         if len(data) == 0:
             print("[ProxyClientThread] Disconnected")
-            exit()
+            self.close()
         
 
 class ProxyClient():
