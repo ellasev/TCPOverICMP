@@ -27,9 +27,15 @@ class ProxyClient(TunnelBase):
         self.icmp_socket = IcmpServer.create_icmp_socket()
         self.tcp_client_socket = None
 
-        self.sockets = [self.icmp_socket]
+        self.sockets = [self.icmp_socket, self.tcp_client_socket]
 
         TunnelBase.__init__(self)
+    
+    def _replace_client_sock(self, new_socket):
+        self.sockets.remove(self.tcp_client_socket)
+
+        self.tcp_client_socket = new_socket
+        self.sockets.append(self.tcp_client_socket)
 
     def icmp_data_handler(self, sock, ip_table_handler:IPTableManager):
         print("[ProxyClientThread] icmp_data_handler")
@@ -41,7 +47,7 @@ class ProxyClient(TunnelBase):
                 print("[ProxyClientThread] Parsed ICMP packet from proxy server")
                 if len(packet.data) == 0:
                     print("[ProxyClientThread] Remote Host Disconnected")
-                    self.close()
+                    raise disconnectedException()
                 self.tcp_client_socket.send(packet.data)
         except ValueError:
             # Bad packet, malformated, not our, EOF etc..
@@ -61,10 +67,7 @@ class ProxyClient(TunnelBase):
 
         if len(data) == 0:
             print("[ProxyClientThread] Disconnected")
-            self.close()
-
-    def close(self):
-        raise disconnectedException()
+            raise disconnectedException()
 
     def run(self):
         # main loop
@@ -77,10 +80,7 @@ class ProxyClient(TunnelBase):
                 sock, addr = self.tcp_socket.accept()
                 print("[ProxyClient] New connection!")
                 try:
-                    self.tcp_client_socket = sock
-                    self.sockets.append(self.tcp_client_socket)
+                    self._replace_client_sock(sock)
                     self.runTunnel()
                 except disconnectedException:
-                    self.sockets.remove(self.tcp_client_socket)
                     self.tcp_client_socket.close()
-                    self.tcp_client_socket = None
