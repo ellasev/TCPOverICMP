@@ -25,9 +25,9 @@ class IcmpServer():
         assert packet[ICMP].id == ICMP_ID, "Wrong ICMP ID"
 
         parsed_packet = ParsedIcmpPacket(icmp_type = packet[ICMP].type, src_host = packet[IP].src)
+
         struct_size = struct.calcsize("4sH")
         payload = bytes(packet[ICMP].payload)
-
         parsed_packet.remote_dst_host, parsed_packet.remote_dst_port = struct.unpack("4sH", payload[:struct_size])
         parsed_packet.data = payload[struct_size:]
         parsed_packet.remote_dst_host = socket.inet_ntoa(parsed_packet.remote_dst_host)

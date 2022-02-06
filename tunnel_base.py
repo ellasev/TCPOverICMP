@@ -1,21 +1,19 @@
 import socket
-import threading
 import select 
 
 from iptables import IPTableManager, IPTablesICMPRule
 
-class TunnelBase(threading.Thread):
+class TunnelBase():
     def icmp_data_handler(self, sock):
         print(f"[Tunnel] icmp_data_handler: {sock.recv()}")
 
     def tcp_data_handler(self, sock):
         print(f"[Tunnel] tcp_data_handler: {sock.recv()}")
 
-    def run(self):
+    def runTunnel(self):
         print("[Tunnel] main loop")
         with IPTableManager() as ip_table_manager:
-            print(self.proxy_icmp_socket.getsockname())
-            icmp_rule = IPTablesICMPRule(ip=self.proxy_icmp_socket.getsockname()[0])
+            icmp_rule = IPTablesICMPRule(ip=self.icmp_socket.getsockname()[0])
             ip_table_manager.add_rule(icmp_rule)
 
             while True:

@@ -10,9 +10,14 @@ from consts import ICMP_BUFFER_SIZE, TCP_BUFFER_SIZE, ICMP_ECHO_REPLY, ICMP_ECHO
 
 class ProxyServer(TunnelBase):
     def __init__(self):
-        self.proxy_icmp_socket = IcmpServer.create_icmp_socket()
-        self.sockets = [self.proxy_icmp_socket]
+        self.icmp_socket = IcmpServer.create_icmp_socket()
+        self.sockets = [self.icmp_socket]
         self.tcp_socket = None
+
+        TunnelBase.__init__(self)
+
+    def run():
+        self.runTunnel()
 
     def _create_tcp_socket(self, remote_dst_host, remote_dst_port):
         print("[ProxyServer] Creating new TCP socket")
@@ -30,10 +35,10 @@ class ProxyServer(TunnelBase):
 
     def icmp_data_handler(self, sock, ip_table_handler:IPTableManager):
         print("[ProxyServer] ICMP data handler")
-        assert sock == self.proxy_icmp_socket, "WTF"
+        assert sock == self.icmp_socket, "WTF"
 
         try:
-            packet = IcmpServer.parse_icmp_packet(self.proxy_icmp_socket.recvfrom(ICMP_BUFFER_SIZE)[0])
+            packet = IcmpServer.parse_icmp_packet(self.icmp_socket.recvfrom(ICMP_BUFFER_SIZE)[0])
             print(f"[ProxyServer] Parsed packet")
 
             self.proxy_client_host = packet.src_host

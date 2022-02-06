@@ -1,14 +1,5 @@
 import argparse
 from logging import exception
-import struct
-
-import select
-import socket
-import threading
-from scapy.all import *
-
-from iptables import IPTableManager, IPTablesICMPRule, IPTablesLoopbackRule
-from consts import ICMP_BUFFER_SIZE, TCP_BUFFER_SIZE, ICMP_ID, ICMP_ECHO_REPLY, ICMP_ECHO_REQUEST
 
 from proxy_server import ProxyServer
 from proxy_client import ProxyClient
