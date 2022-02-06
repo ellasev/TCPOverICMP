@@ -15,7 +15,7 @@ class ProxyClientThread(TunnelBase):
         self.remote_server_port = remote_server_port
         self.sockets = [tcp_socket, proxy_icmp_socket]
 
-        Tunnel.__init__(self)
+        TunnelBase.__init__(self)
 
     def close(self):
         self.tcp_socket.close()

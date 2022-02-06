@@ -2,6 +2,8 @@ import struct
 import socket 
 from scapy.all import *
 
+from consts import ICMP_ID
+
 class ParsedIcmpPacket():
     def __init__(self, icmp_type, src_host):
         self.icmp_type = icmp_type

@@ -14,8 +14,6 @@ class ProxyServer(TunnelBase):
         self.sockets = [self.proxy_icmp_socket]
         self.tcp_socket = None
 
-        Tunnel.__init__(self)
-
     def _create_tcp_socket(self, remote_dst_host, remote_dst_port):
         print("[ProxyServer] Creating new TCP socket")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
