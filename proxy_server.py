@@ -16,7 +16,7 @@ class ProxyServer(TunnelBase):
 
         TunnelBase.__init__(self)
 
-    def run():
+    def run(self):
         self.runTunnel()
 
     def _create_tcp_socket(self, remote_dst_host, remote_dst_port):
