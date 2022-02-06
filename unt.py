@@ -10,7 +10,7 @@ from scapy.all import *
 
 from iptables import IPTableManager, IPTablesICMPRule, IPTablesLoopbackRule
 
-ICMP_BUFFER_SIZE = 2024
+ICMP_BUFFER_SIZE = 5024
 TCP_BUFFER_SIZE = 2024
 ICMP_ID = 2610
 ICMP_ECHO_REPLY = 0
