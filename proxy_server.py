@@ -13,23 +13,24 @@ class ProxyServer(TunnelBase):
         self.icmp_socket = IcmpServer.create_icmp_socket()
         self.tcp_socket = None
 
-        self.sockets = [self.icmp_socket, self.tcp_socket]
+        self.sockets = [self.icmp_socket]
 
         TunnelBase.__init__(self)
 
     def run(self):
         self.runTunnel()
 
-    def _create_tcp_socket(self, remote_dst_host, remote_dst_port):
+    def _close_tcp_socket(self):
+        self.tcp_socket.close()
         self.sockets.remove(self.tcp_socket)
 
+    def _open_tcp_socket(self, remote_dst_host, remote_dst_port):
         print("[ProxyServer] Creating new TCP socket")
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.tcp_socket.connect((remote_dst_host, remote_dst_port))
 
         self.sockets.append(self.tcp_socket)
-
 
     def icmp_data_handler(self, sock, ip_table_handler:IPTableManager):
         print("[ProxyServer] ICMP data handler")
@@ -43,10 +44,10 @@ class ProxyServer(TunnelBase):
             if packet.icmp_type == ICMP_ECHO_REQUEST:
                 if len(packet.data) == 0:
                     print("[ProxyServer] Disconnect request received from client")
-                    self.tcp_socket.close()
+                    self._close_tcp_socket()
                 else:
                     if not self.tcp_socket:
-                        self._create_tcp_socket(packet.remote_dst_host, packet.remote_dst_port)
+                        self._open_tcp_socket(packet.remote_dst_host, packet.remote_dst_port)
                         #rule = IPTablesLoopbackRule(packet.remote_dst_host, is_server=True)
                         #ip_table_handler.add_rule(rule)
                     print("[ProxyServer] Sending data from client over TCP socket")

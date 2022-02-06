@@ -27,13 +27,15 @@ class ProxyClient(TunnelBase):
         self.icmp_socket = IcmpServer.create_icmp_socket()
         self.tcp_client_socket = None
 
-        self.sockets = [self.icmp_socket, self.tcp_client_socket]
+        self.sockets = [self.icmp_socket]
 
         TunnelBase.__init__(self)
-    
-    def _replace_client_sock(self, new_socket):
-        self.sockets.remove(self.tcp_client_socket)
 
+    def _close_tcp_client_socket(self):
+        self.tcp_client_socket.close()
+        self.sockets.remove(self.tcp_client_socket)
+    
+    def _open_tcp_client_socket(self, new_socket):
         self.tcp_client_socket = new_socket
         self.sockets.append(self.tcp_client_socket)
 
@@ -80,7 +82,7 @@ class ProxyClient(TunnelBase):
                 sock, addr = self.tcp_socket.accept()
                 print("[ProxyClient] New connection!")
                 try:
-                    self._replace_client_sock(sock)
+                    self._open_tcp_client_socket(sock)
                     self.runTunnel()
                 except disconnectedException:
-                    self.tcp_client_socket.close()
+                    self._close_tcp_client_socket()
