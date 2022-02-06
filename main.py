@@ -1,4 +1,5 @@
 import argparse
+import traceback
 from logging import exception
 
 from proxy_server import ProxyServer
@@ -31,12 +32,18 @@ Example:
 
     args = parser.parse_args()
 
-    if args.server:
-        tunnel = ProxyServer()
-    else:
-        tunnel = ProxyClient(
-            proxy_server_host=args.proxy_host, listen_port=args.listen_port,
-            remote_server_host=args.dst_host, remote_server_port=args.dst_port
-        )
+    
+    try:
+        if args.server:
+            tunnel = ProxyServer()
+        else:
+            tunnel = ProxyClient(
+                proxy_server_host=args.proxy_host, listen_port=args.listen_port,
+                remote_server_host=args.dst_host, remote_server_port=args.dst_port
+            )
 
-    tunnel.run()
+        tunnel.run()
+
+    except:
+        print("Main exited with exception: ")
+        print(traceback.format_exc())
