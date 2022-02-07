@@ -75,8 +75,6 @@ class ProxyClient(TunnelBase):
         # main loop
         print("[ProxyClient] Entering main loop")
         with IPTableManager() as ip_table:
-            #rule = IPTablesLoopbackRule(port=self.tcp_socket.getsockname()[1], is_server=False)
-            #ip_table.add_rule(rule)
             while True:
                 self.tcp_socket.listen(1)
                 sock, addr = self.tcp_socket.accept()
