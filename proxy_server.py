@@ -4,7 +4,6 @@ from scapy.all import *
 
 from tunnel_base import TunnelBase
 from icmp_server import IcmpServer
-from iptables import IPTableManager, IPTablesICMPRule
 from consts import ICMP_BUFFER_SIZE, TCP_BUFFER_SIZE, ICMP_ECHO_REPLY, ICMP_ECHO_REQUEST
 
 

@@ -1,6 +1,3 @@
-from ipaddress import IPv4Address
-import ipaddress
-
 LOOPBACK_IP = "127.0.0.1"
 LOOPBACK_DEVICE = "lo"
 

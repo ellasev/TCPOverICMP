@@ -3,7 +3,6 @@ from scapy.all import *
 
 from tunnel_base import TunnelBase
 from icmp_server import IcmpServer
-from iptables import IPTableManager, IPTablesICMPRule
 from consts import ICMP_BUFFER_SIZE, TCP_BUFFER_SIZE, ICMP_ECHO_REPLY, ICMP_ECHO_REQUEST
 
 class disconnectedException(Exception):
@@ -74,13 +73,12 @@ class ProxyClient(TunnelBase):
     def run(self):
         # main loop
         print("[ProxyClient] Entering main loop")
-        with IPTableManager() as ip_table:
-            while True:
-                self.tcp_socket.listen(1)
-                sock, addr = self.tcp_socket.accept()
-                print("[ProxyClient] New connection!")
-                try:
-                    self._open_tcp_client_socket(sock)
-                    self.runTunnel()
-                except disconnectedException:
-                    self._close_tcp_client_socket()
+        while True:
+            self.tcp_socket.listen(1)
+            sock, _ = self.tcp_socket.accept()
+            print("[ProxyClient] New connection!")
+            try:
+                self._open_tcp_client_socket(sock)
+                self.runTunnel()
+            except disconnectedException:
+                self._close_tcp_client_socket()
