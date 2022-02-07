@@ -1,4 +1,5 @@
-import socket 
+import socket
+from TCPOverICMP.iptables import IPTableManager 
 from scapy.all import *
 
 from tunnel_base import TunnelBase
@@ -38,7 +39,7 @@ class ProxyClient(TunnelBase):
         self.tcp_client_socket = new_socket
         self.sockets.append(self.tcp_client_socket)
 
-    def icmp_data_handler(self, sock):
+    def icmp_data_handler(self, sock, ip_table_handler:IPTableManager):
         print("[ProxyClientThread] icmp_data_handler")
         assert sock == self.icmp_socket, "Unexpected socket Got ICMP from different socket then the one we know"
         try:
@@ -73,12 +74,15 @@ class ProxyClient(TunnelBase):
     def run(self):
         # main loop
         print("[ProxyClient] Entering main loop")
-        while True:
-            self.tcp_socket.listen(1)
-            sock, _ = self.tcp_socket.accept()
-            print("[ProxyClient] New connection!")
-            try:
-                self._open_tcp_client_socket(sock)
-                self.runTunnel()
-            except disconnectedException:
-                self._close_tcp_client_socket()
+        with IPTableManager() as ip_table:
+            #rule = IPTablesLoopbackRule(port=self.tcp_socket.getsockname()[1], is_server=False)
+            #ip_table.add_rule(rule)
+            while True:
+                self.tcp_socket.listen(1)
+                sock, _ = self.tcp_socket.accept()
+                print("[ProxyClient] New connection!")
+                try:
+                    self._open_tcp_client_socket(sock)
+                    self.runTunnel()
+                except disconnectedException:
+                    self._close_tcp_client_socket()

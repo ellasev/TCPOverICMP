@@ -1,5 +1,6 @@
 import socket 
 import traceback
+from TCPOverICMP.iptables import IPTableManager
 from scapy.all import *
 
 from tunnel_base import TunnelBase
@@ -31,7 +32,7 @@ class ProxyServer(TunnelBase):
 
         self.sockets.append(self.tcp_socket)
 
-    def icmp_data_handler(self, sock):
+    def icmp_data_handler(self, sock, ip_table_handler:IPTableManager):
         print("[ProxyServer] ICMP data handler")
         assert sock == self.icmp_socket, "Unexpected socket Got ICMP from different socket then the one we know"
 
@@ -47,6 +48,8 @@ class ProxyServer(TunnelBase):
                 else:
                     if not self.tcp_socket:
                         self._open_tcp_socket(packet.remote_dst_host, packet.remote_dst_port)
+                        #rule = IPTablesLoopbackRule(packet.remote_dst_host, is_server=True)
+                        #ip_table_handler.add_rule(rule)
                     print("[ProxyServer] Sending data from client over TCP socket")
                     self.tcp_socket.send(packet.data)
             else:
