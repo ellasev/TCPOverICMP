@@ -10,7 +10,7 @@ class TunnelBase():
     def tcp_data_handler(self, sock):
         print(f"[Tunnel] tcp_data_handler: {sock.recv()}")
 
-    def runTunnel(self):
+    def run(self):
         print("[Tunnel] main loop")
         with IPTableManager() as ip_table_manager:
             icmp_rule = IPTablesICMPRule(ip=self.icmp_socket.getsockname()[0])
@@ -19,7 +19,7 @@ class TunnelBase():
             while True:
                 read, _, _ = select.select(self.sockets, [], [])
                 for sock in read:
-                    if sock.proto == socket.IPPROTO_ICMP:
+                    if type(sock) == socket.socket:
                         self.icmp_data_handler(sock)
                     else:
                         self.tcp_data_handler(sock)
