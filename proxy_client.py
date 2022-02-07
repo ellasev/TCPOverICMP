@@ -39,7 +39,7 @@ class ProxyClient(TunnelBase):
         self.tcp_client_socket = new_socket
         self.sockets.append(self.tcp_client_socket)
 
-    def icmp_data_handler(self, sock, ip_table_handler:IPTableManager):
+    def icmp_data_handler(self, sock):
         print("[ProxyClientThread] icmp_data_handler")
         assert sock == self.icmp_socket, "Unexpected socket Got ICMP from different socket then the one we know"
         try:
