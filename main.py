@@ -9,15 +9,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="ICMP tunnel for TCP traffic",
-        usage="""
+        usage=
+        """
         client: sudo python3 tunnel.py -p <proxy_host> -lp <listen_port> -d <dst_host> -dp <dst_port>
         proxy: tunnel.py -s
-        
-Example:
-        client: sudo python tunnel.py -p 192.168.68.118 -lp 1337 -d google.com -dp 80
-        proxy: sudo python tunnel.py -s 
-        nc 127.0.0.1 1337
-"""
+            
+        Example:
+            client: sudo python tunnel.py -p 1.2.3.4 -lp 1337 -d 127.0.0.1 -dp 22
+            proxy: sudo python tunnel.py -s 
+        """
     )
 
     parser.add_argument("-s", "--server", action="store_true", default=False)
