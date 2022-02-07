@@ -19,6 +19,7 @@ class LoopbackSocket():
 		print(f"[LoopbackSocket] Creating Raw TCP socket on loopback: {'127.0.0.1', listen_port}")
 
 		direction = 'src' if is_server else 'dst'
+		print (f'FILTER: host 127.0.0.1 and tcp {direction} port {listen_port}')
 		self.socket = L3RawSocket(iface='lo', filter=f'host 127.0.0.1 and tcp {direction} port {listen_port}')
 
 		self.loopback_iptables_rule = IPTablesLoopbackRule(port=listen_port, is_server=False)

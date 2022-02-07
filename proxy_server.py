@@ -2,6 +2,7 @@ import socket
 import traceback
 from scapy.all import *
 
+from loopback_socket import LoopbackSocket
 from tunnel_base import TunnelBase
 from icmp_server import IcmpServer
 from consts import ICMP_BUFFER_SIZE, TCP_BUFFER_SIZE, ICMP_ECHO_REPLY, ICMP_ECHO_REQUEST
@@ -18,7 +19,7 @@ class ProxyServer(TunnelBase):
 
     def _open_tcp_socket(self, remote_dst_port):
         print("[ProxyServer] Creating new TCP socket")
-        self.tcp_socket = LoopbackSocket(remote_dst_host, is_server=True)
+        self.tcp_socket = LoopbackSocket(remote_dst_port, is_server=True)
 
         self.sockets.append(self.tcp_socket.socket)
 
