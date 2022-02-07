@@ -7,18 +7,12 @@ from consts import ICMP_BUFFER_SIZE, ICMP_ECHO_REPLY, ICMP_ECHO_REQUEST
 
 
 class ProxyClient(TunnelBase):
-    def _create_tcp_listening_socket(self, listen_port):
-        print(f"[ProxyClient] Creating Raw TCP socket on loopback: {'127.0.0.1', listen_port}")
-        sock = LoopbackSocket(listen_port, is_server=False)
-
-        return sock
-
     def __init__(self, proxy_server_host, listen_port, remote_server_host, remote_server_port):
         self.remote_server_host = remote_server_host
         self.remote_server_port = remote_server_port
         self.proxy_server_host = proxy_server_host
 
-        self.tcp_socket = self._create_tcp_listening_socket(listen_port)
+        self.tcp_socket = LoopbackSocket(listen_port, is_server=False)
         self.icmp_socket = IcmpServer.create_icmp_socket()
 
         self.sockets = [self.icmp_socket, self.tcp_socket.socket]
@@ -33,9 +27,6 @@ class ProxyClient(TunnelBase):
 
             if packet.icmp_type == ICMP_ECHO_REPLY:
                 print("[ProxyClientThread] Parsed ICMP packet from proxy server")
-                if len(packet.data) == 0:
-                    print("[ProxyClientThread] Remote Host Disconnected")
-                    raise disconnectedException()
                 self.tcp_socket.send(packet.data)
         except ValueError:
             # Bad packet, malformated, not our, EOF etc..
@@ -44,16 +35,7 @@ class ProxyClient(TunnelBase):
     def tcp_data_handler(self, sock):
         print("[ProxyClientThread] tcp_data_handler")
         assert sock == self.tcp_socket.socket, "Unexpected socket Got TCP from different socket then the one we know"
-        data = self.tcp_socket.recv()
-
-        print("[ProxyClientThread] Building ICMP packet")
-        packet = IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REQUEST, dst_host=self.proxy_server_host, 
-            remote_dst_host=self.remote_server_host, remote_dst_port=self.remote_server_port, data=data)
 
         print("[ProxyClientThread] sending ICMP packet to proxy server")
-        send(packet)
-
-        if len(data) == 0:
-            print("[ProxyClientThread] Disconnected")
-            raise disconnectedException()
-
+        send(IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REQUEST, dst_host=self.proxy_server_host, 
+            remote_dst_host=self.remote_server_host, remote_dst_port=self.remote_server_port, data=self.tcp_socket.recv()))

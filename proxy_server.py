@@ -16,17 +16,11 @@ class ProxyServer(TunnelBase):
 
         TunnelBase.__init__(self)
 
-    def _close_tcp_socket(self):
-        self.tcp_socket.close()
-        self.sockets.remove(self.tcp_socket)
-
-    def _open_tcp_socket(self, remote_dst_host, remote_dst_port):
+    def _open_tcp_socket(self, remote_dst_port):
         print("[ProxyServer] Creating new TCP socket")
-        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.tcp_socket.connect((remote_dst_host, remote_dst_port))
+        self.tcp_socket = LoopbackSocket(remote_dst_host, is_server=True)
 
-        self.sockets.append(self.tcp_socket)
+        self.sockets.append(self.tcp_socket.socket)
 
     def icmp_data_handler(self, sock):
         print("[ProxyServer] ICMP data handler")
@@ -38,14 +32,10 @@ class ProxyServer(TunnelBase):
             self.proxy_client_host = packet.src_host
 
             if packet.icmp_type == ICMP_ECHO_REQUEST:
-                if len(packet.data) == 0:
-                    print("[ProxyServer] Disconnect request received from client")
-                    self._close_tcp_socket()
-                else:
-                    if not self.tcp_socket:
-                        self._open_tcp_socket(packet.remote_dst_host, packet.remote_dst_port)
-                    print("[ProxyServer] Sending data from client over TCP socket")
-                    self.tcp_socket.send(packet.data)
+                if not self.tcp_socket:
+                    self._open_tcp_socket(packet.remote_dst_port)
+                print("[ProxyServer] Sending data from client over TCP socket")
+                self.tcp_socket.send(packet.data)
             else:
                 print(f'Wrong ICMP type: {packet.icmp_type}')
         except Exception as e:
@@ -55,19 +45,7 @@ class ProxyServer(TunnelBase):
 
     def tcp_data_handler(self, sock):
         print("[ProxyServer] Received data on TCP socket")
-        assert sock == self.tcp_socket, "Unexpected socket Got TCP from different socket then the one we know"
-
-        try: 
-            data = self.tcp_socket.recv(TCP_BUFFER_SIZE)
-        except ConnectionResetError as e:
-            print(f"[ProxyClientThread] {e}")
-            data = b''
-
-        print("[ProxyClientThread] Building ICMP packet")
-        packet = IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REPLY, dst_host=self.proxy_client_host, data=data)
+        assert sock == self.tcp_socket.socket, "Unexpected socket Got TCP from different socket then the one we know"
 
         print("[ProxyServer] Sending received data over ICMP connection")
-        send(packet)
-
-        if len(data) == 0:
-            self._close_conenction()
+        send(IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REPLY, dst_host=self.proxy_client_host, data=self.tcp_socket.recv()))

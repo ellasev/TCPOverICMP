@@ -16,6 +16,8 @@ class LoopbackSocket():
 		:param listen_port - TCP port to listen to.
 		:param is_server - Whether we should sniff incoming or outgoing packets to the listen_port
 		"""
+		print(f"[LoopbackSocket] Creating Raw TCP socket on loopback: {'127.0.0.1', listen_port}")
+
 		direction = 'src' if is_server else 'dst'
 		self.socket = L3RawSocket(iface='lo', filter=f'host 127.0.0.1 and tcp {direction} port {listen_port}')
 
