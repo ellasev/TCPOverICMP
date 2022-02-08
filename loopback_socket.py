@@ -22,7 +22,7 @@ class LoopbackSocket():
 		print(f"[LoopbackSocket] Creating Raw TCP socket on loopback: {'127.0.0.1', listen_port}")
 		self.socket = L3RawSocket(iface='lo')
 
-		self.loopback_iptables_rule = IPTablesLoopbackRule(port=listen_port, is_server=False)
+		self.loopback_iptables_rule = IPTablesLoopbackRule(port=listen_port, is_server=is_server)
 		self.loopback_iptables_rule.apply()
 
 
