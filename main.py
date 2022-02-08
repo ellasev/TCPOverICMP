@@ -25,8 +25,6 @@ if __name__ == "__main__":
                         help="Address of the proxy server")
     parser.add_argument("-lp", "--listen_port", type=int,
                         help="Port to bind for incoming TCP connections from proxy users")
-    parser.add_argument("-d", "--dst_host",
-                        help="dst host to connect to using TCP")
     parser.add_argument("-dp", "--dst_port", type=int,
                         help="Remote port to connect to using TCP")
 
