@@ -11,7 +11,7 @@ class ProxyClient(TunnelBase):
     """
     Implements the Client side of the ICMP TCP proxy
     """
-    def __init__(self, proxy_server_host, listen_port, remote_server_port):
+    def __init__(self, proxy_server_host, listen_port):
         """
         Initiates the different paramters in the proxy client.
         Opens the ICMP and TCP sockets.
@@ -19,7 +19,7 @@ class ProxyClient(TunnelBase):
         :param proxy_server_host - host to create the tunnel with
         :param listen_port - port to listen to for TCP connections
         """
-        self.remote_server_port = remote_server_port
+        self.listen_port = listen_port
         self.proxy_server_host = proxy_server_host
 
         self.tcp_socket = LoopbackSocket(listen_port, is_server=False)

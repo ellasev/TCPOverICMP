@@ -3,43 +3,6 @@ from abc import ABC
 
 from consts import DROP_TABLE, ICMP_PROTOCOL, INPUT_TABLE, LOOPBACK_DEVICE, LOOPBACK_IP, OUTPUT_TABLE, TCP_PROTOCOL
     
-class IPTableManager():
-	"""
-	Manage the iptables rule, make sure to clean them up when exiting
-	"""
-	def __init__(self):
-		"""
-		Initialize.
-		Initialize rules list
-		"""
-		self.rules_list = []
-	
-	def add_rule(self, rule:IPTablesRule):
-		"""
-		Add a rule to the IPtables applied rules and also to the classes list of applied rules
-
-		:param rule - rule to add
-		"""
-		self.rules_list.append(rule)
-		rule.apply()
-	
-	def __enter__(self):
-
-		"""
-		Constructor 
-
-		"""
-		return self
-
-	def __exit__(self, type, value, traceback):	
-
-		"""
-		Destructor
-		Remove that appear in our list of rules from systems applied rules.
-		"""
-		for rule in self.rules_list:
-			rule.delete()
-
 class IPTablesRule(ABC):
 	"""
 	Abstract IPTables rule to inherit and implement your IPTables rule form.
@@ -135,3 +98,40 @@ class IPTablesLoopbackRule(IPTablesRule):
 		defines the chain 
 		"""
 		return Chain(Table(Table.FILTER), INPUT_TABLE)
+
+class IPTableManager():
+	"""
+	Manage the iptables rule, make sure to clean them up when exiting
+	"""
+	def __init__(self):
+		"""
+		Initialize.
+		Initialize rules list
+		"""
+		self.rules_list = []
+	
+	def add_rule(self, rule:IPTablesRule):
+		"""
+		Add a rule to the IPtables applied rules and also to the classes list of applied rules
+
+		:param rule - rule to add
+		"""
+		self.rules_list.append(rule)
+		rule.apply()
+	
+	def __enter__(self):
+
+		"""
+		Constructor 
+
+		"""
+		return self
+
+	def __exit__(self, type, value, traceback):	
+
+		"""
+		Destructor
+		Remove that appear in our list of rules from systems applied rules.
+		"""
+		for rule in self.rules_list:
+			rule.delete()
