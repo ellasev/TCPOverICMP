@@ -3,6 +3,7 @@ from abc import ABC
 
 from consts import DROP_TABLE, ICMP_PROTOCOL, INPUT_TABLE, LOOPBACK_DEVICE, LOOPBACK_IP, OUTPUT_TABLE, TCP_PROTOCOL
     
+
 class IPTablesRule(ABC):
 	"""
 	Abstract IPTables rule to inherit and implement your IPTables rule form.
@@ -40,29 +41,45 @@ class IPTablesRule(ABC):
 		"""
 		self.chain.delete_rule(self.rule)
 
-class IPTablesICMPRule(IPTablesRule):
+class IPTableManager():
 	"""
-	Class for IPTable rules that drops ICMP packets
+	Manage the iptables rule, make sure to clean them up when exiting
 	"""
-	def __init__(self, ip: str):
-		self.ip = ip
-		super().__init__()
+	def __init__(self):
+		"""
+		Initialize.
+		Initialize rules list
+		"""
+		self.rules_list = []
+	
+	def add_rule(self, rule:IPTablesRule):
+		"""
+		Add a rule to the IPtables applied rules and also to the classes list of applied rules
 
-	def _create_rule(self) -> Rule:
-		""" 
-		Defines the rule.
+		:param rule - rule to add
 		"""
 		rule = Rule()
 		rule.protocol = ICMP_PROTOCOL
 		rule.create_target(DROP_TABLE)
-		return rule
-
-	def _get_chain(self) -> Chain:
+		self.rules_list.append(rule)
+		rule.apply()
+	
+	def __enter__(self):
 
 		"""
-		defines the chain 
+		Constructor 
+
 		"""
-		return Chain(Table(Table.FILTER), OUTPUT_TABLE)
+		return self
+
+	def __exit__(self, type, value, traceback):	
+
+		"""
+		Destructor
+		Remove that appear in our list of rules from systems applied rules.
+		"""
+		for rule in self.rules_list:
+			rule.delete()
 
 class IPTablesLoopbackRule(IPTablesRule):
 	"""
@@ -99,39 +116,28 @@ class IPTablesLoopbackRule(IPTablesRule):
 		"""
 		return Chain(Table(Table.FILTER), INPUT_TABLE)
 
-class IPTableManager():
+
+class IPTablesICMPRule(IPTablesRule):
 	"""
-	Manage the iptables rule, make sure to clean them up when exiting
+	Class for IPTable rules that drops ICMP packets
 	"""
-	def __init__(self):
-		"""
-		Initialize.
-		Initialize rules list
-		"""
-		self.rules_list = []
-	
-	def add_rule(self, rule:IPTablesRule):
-		"""
-		Add a rule to the IPtables applied rules and also to the classes list of applied rules
+	def __init__(self, ip: str):
+		self.ip = ip
+		super().__init__()
 
-		:param rule - rule to add
+	def _create_rule(self) -> Rule:
+		""" 
+		Defines the rule.
 		"""
-		self.rules_list.append(rule)
-		rule.apply()
-	
-	def __enter__(self):
+		rule = Rule()
+		rule.protocol = ICMP_PROTOCOL
+		rule.create_target(DROP_TABLE)
+		#rule.src = self.ip
+		return rule
+
+	def _get_chain(self) -> Chain:
 
 		"""
-		Constructor 
-
+		defines the chain 
 		"""
-		return self
-
-	def __exit__(self, type, value, traceback):	
-
-		"""
-		Destructor
-		Remove that appear in our list of rules from systems applied rules.
-		"""
-		for rule in self.rules_list:
-			rule.delete()
+		return Chain(Table(Table.FILTER), OUTPUT_TABLE)

@@ -1,5 +1,4 @@
-from ast import dump
-from struct import pack
+
 from scapy.all import * 
 
 from consts import TCP_BUFFER_SIZE
