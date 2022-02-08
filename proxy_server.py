@@ -1,11 +1,11 @@
-import socket 
 import traceback
+from iptables import IPTableManager, IPTablesLoopbackRule
 from scapy.all import *
 
 from loopback_socket import LoopbackSocket
 from tunnel_base import TunnelBase
 from icmp_server import IcmpServer
-from consts import ICMP_BUFFER_SIZE, TCP_BUFFER_SIZE, ICMP_ECHO_REPLY, ICMP_ECHO_REQUEST
+from consts import ICMP_BUFFER_SIZE, ICMP_ECHO_REPLY, ICMP_ECHO_REQUEST
 
 
 class ProxyServer(TunnelBase):
@@ -23,19 +23,20 @@ class ProxyServer(TunnelBase):
 
         self.sockets.append(self.tcp_socket.socket)
 
-    def icmp_data_handler(self, sock):
-        print("[ProxyServer] ICMP data handler")
+    def icmp_data_handler(self, sock, iptable_manager:IPTableManager):
+        #print("[ProxyServer] ICMP data handler")
         assert sock == self.icmp_socket, "Unexpected socket Got ICMP from different socket then the one we know"
-
         try:
             packet = IcmpServer.parse_icmp_packet(self.icmp_socket.recvfrom(ICMP_BUFFER_SIZE)[0])
-            print(f"[ProxyServer] Parsed packet")
+            #print(f"[ProxyServer] Parsed packet")
             self.proxy_client_host = packet.src_host
 
             if packet.icmp_type == ICMP_ECHO_REQUEST:
                 if not self.tcp_socket:
                     self._open_tcp_socket(packet.remote_dst_port)
-                print("[ProxyServer] Sending data from client over TCP socket")
+                    tcp_rule = IPTablesLoopbackRule(port=self.tcp_socket.listen_port, is_server=True)
+                    iptable_manager.add_rule(tcp_rule)
+                #print("[ProxyServer] Sending data from client over TCP socket")
                 self.tcp_socket.send(packet.data)
             else:
                 print(f'Wrong ICMP type: {packet.icmp_type}')
@@ -49,5 +50,5 @@ class ProxyServer(TunnelBase):
 
         data = self.tcp_socket.recv()
         if data:
-            print("[ProxyServer] Received data on TCP socket. Sending over ICMP connection")
+            #print("[ProxyServer] Received data on TCP socket. Sending over ICMP connection")
             send(IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REPLY, dst_host=self.proxy_client_host, data=data))

@@ -41,7 +41,7 @@ if __name__ == "__main__":
                 proxy_server_host=args.proxy_host, listen_port=args.listen_port, remote_server_port=args.dst_port
             )
 
-        tunnel.run()
+        tunnel.run(args.server)
 
     except:
         print("Main exited with exception: ")

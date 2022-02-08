@@ -1,6 +1,7 @@
+from ast import dump
+from struct import pack
 from scapy.all import * 
 
-from iptables import IPTableManager, IPTablesLoopbackRule
 from consts import TCP_BUFFER_SIZE
 
 
@@ -22,12 +23,6 @@ class LoopbackSocket():
 		print(f"[LoopbackSocket] Creating Raw TCP socket on loopback: {'127.0.0.1', listen_port}")
 		self.socket = L3RawSocket(iface='lo')
 
-		self.loopback_iptables_rule = IPTablesLoopbackRule(port=listen_port, is_server=is_server)
-		self.loopback_iptables_rule.apply()
-
-
-	def __exit__(self, type, value, traceback):	
-		self.loopback_iptables_rule.delete()
 
 	def recv(self):
 		"""
@@ -48,5 +43,4 @@ class LoopbackSocket():
 		"""
 		packet = IP(dst='127.0.0.1') / TCP(partial_packet)
 		del packet[TCP].chksum
-
 		self.socket.send(packet)
