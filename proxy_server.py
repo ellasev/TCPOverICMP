@@ -48,5 +48,7 @@ class ProxyServer(TunnelBase):
         print("[ProxyServer] Received data on TCP socket")
         assert sock == self.tcp_socket.socket, "Unexpected socket Got TCP from different socket then the one we know"
 
-        print("[ProxyServer] Sending received data over ICMP connection")
-        send(IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REPLY, dst_host=self.proxy_client_host, data=self.tcp_socket.recv()))
+        data = self.tcp_socket.recv()
+        if data:
+            print("[ProxyServer] Sending received data over ICMP connection")
+            send(IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REPLY, dst_host=self.proxy_client_host, data=self.tcp_socket.recv()))

@@ -16,11 +16,11 @@ class LoopbackSocket():
 		:param listen_port - TCP port to listen to.
 		:param is_server - Whether we should sniff incoming or outgoing packets to the listen_port
 		"""
-		print(f"[LoopbackSocket] Creating Raw TCP socket on loopback: {'127.0.0.1', listen_port}")
+		self.listen_port = listen_port
+		self.is_server = is_server
 
-		direction = 'src' if is_server else 'dst'
-		print (f'FILTER: host 127.0.0.1 and tcp {direction} port {listen_port}')
-		self.socket = L3RawSocket(iface='lo', filter=f'host 127.0.0.1 and tcp {direction} port {listen_port}')
+		print(f"[LoopbackSocket] Creating Raw TCP socket on loopback: {'127.0.0.1', listen_port}")
+		self.socket = L3RawSocket(iface='lo')
 
 		self.loopback_iptables_rule = IPTablesLoopbackRule(port=listen_port, is_server=False)
 		self.loopback_iptables_rule.apply()
@@ -35,7 +35,10 @@ class LoopbackSocket():
 
 		@returns the packet from the TCP layer and up
 		"""
-		return raw(self.socket.recv(TCP_BUFFER_SIZE)[TCP])
+		packet = self.socket.recv(TCP_BUFFER_SIZE)
+		if TCP in packet:
+			if getattr(packet[TCP], "sport" if self.is_server else "dport") == self.listen_port and (packet[IP].src == '127.0.0.1' or packet[IP].dst == '127.0.0.1'):
+				return raw(packet[TCP])
 
 	def send(self, partial_packet):
 		"""
