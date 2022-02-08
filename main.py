@@ -10,7 +10,7 @@ if __name__ == "__main__":
         description="ICMP tunnel for TCP traffic",
         usage=
         """
-        client: sudo python3 tunnel.py -p <proxy_host> -lp <listen_port> -d <dst_host> -dp <dst_port>
+        client: sudo python3 tunnel.py -p <proxy_host> -lp <listen_port> -dp <dst_port>
         proxy: tunnel.py -s
             
         Example:
