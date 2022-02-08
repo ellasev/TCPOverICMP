@@ -50,4 +50,4 @@ class ProxyServer(TunnelBase):
         data = self.tcp_socket.recv()
         if data:
             print("[ProxyServer] Received data on TCP socket. Sending over ICMP connection")
-            send(IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REPLY, dst_host=self.proxy_client_host, data=self.tcp_socket.recv()))
+            send(IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REPLY, dst_host=self.proxy_client_host, data=data))
