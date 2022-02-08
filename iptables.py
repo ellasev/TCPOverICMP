@@ -53,14 +53,14 @@ class IPTablesRule(ABC):
 
 	def _create_rule(self) -> Rule:
 		"""
-		Function that is called from main and must be implemented by inherting class. 
+		Function that is called from main and must be implemented by inherting classes. 
 		defines the rule 
 		"""
 		raise NotImplementedError
 
 	def _get_chain(self) -> Chain:
 		"""
-		Function that is called from main and must be implemented by inherting class. 
+		Function that is called from main and must be implemented by inherting classes. 
 		defines the chain 
 		"""
 		raise NotImplementedError
@@ -92,7 +92,6 @@ class IPTablesICMPRule(IPTablesRule):
 		rule = Rule()
 		rule.protocol = ICMP_PROTOCOL
 		rule.create_target(DROP_TABLE)
-		#rule.src = self.ip
 		return rule
 
 	def _get_chain(self) -> Chain:
@@ -131,7 +130,7 @@ class IPTablesLoopbackRule(IPTablesRule):
 		return rule
 
 	def _get_chain(self) -> Chain:
-		
+
 		"""
 		defines the chain 
 		"""

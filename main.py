@@ -1,6 +1,5 @@
 import argparse
 import traceback
-from logging import exception
 
 from proxy_server import ProxyServer
 from proxy_client import ProxyClient
@@ -25,8 +24,6 @@ if __name__ == "__main__":
                         help="Address of the proxy server")
     parser.add_argument("-lp", "--listen_port", type=int,
                         help="Port to bind for incoming TCP connections from proxy users")
-    parser.add_argument("-dp", "--dst_port", type=int,
-                        help="Remote port to connect to using TCP")
 
     args = parser.parse_args()
 
@@ -36,8 +33,7 @@ if __name__ == "__main__":
             tunnel = ProxyServer()
         else:
             tunnel = ProxyClient(
-                proxy_server_host=args.proxy_host, listen_port=args.listen_port, remote_server_port=args.dst_port
-            )
+                proxy_server_host=args.proxy_host, listen_port=args.listen_port)
 
         tunnel.run(args.server)
 
