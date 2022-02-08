@@ -7,8 +7,7 @@ from consts import ICMP_BUFFER_SIZE, ICMP_ECHO_REPLY, ICMP_ECHO_REQUEST
 
 
 class ProxyClient(TunnelBase):
-    def __init__(self, proxy_server_host, listen_port, remote_server_host, remote_server_port):
-        self.remote_server_host = remote_server_host
+    def __init__(self, proxy_server_host, listen_port, remote_server_port):
         self.remote_server_port = remote_server_port
         self.proxy_server_host = proxy_server_host
 
@@ -39,4 +38,4 @@ class ProxyClient(TunnelBase):
         if data:
             print("[ProxyClient] Received data on TCP socket. Sending over ICMP connection")
             send(IcmpServer.build_icmp_packet(icmp_type=ICMP_ECHO_REQUEST, dst_host=self.proxy_server_host, 
-                remote_dst_host=self.remote_server_host, remote_dst_port=self.remote_server_port, data=data))
+                remote_dst_port=self.remote_server_port, data=data))
