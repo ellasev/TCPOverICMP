@@ -14,7 +14,7 @@ if __name__ == "__main__":
         proxy: tunnel.py -s
             
         Example:
-            client: sudo python tunnel.py -p 1.2.3.4 -lp 1337 -d 127.0.0.1 -dp 22
+            client: sudo python tunnel.py -p 1.2.3.4 -lp 1337 -dp 22
             proxy: sudo python tunnel.py -s 
         """
     )
