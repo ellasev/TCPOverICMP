@@ -1,6 +1,5 @@
 import socket
 import select
-from consts import LOOPBACK_DEVICE
 from iptables import IPTablesLoopbackRule
 
 from iptables import IPTableManager, IPTablesICMPRule

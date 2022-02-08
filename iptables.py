@@ -3,38 +3,79 @@ from abc import ABC
 
 from consts import DROP_TABLE, ICMP_PROTOCOL, INPUT_TABLE, LOOPBACK_DEVICE, LOOPBACK_IP, OUTPUT_TABLE, TCP_PROTOCOL
     
-class IPTablesRule(ABC):
-	def __init__(self):
-		self.rule: Rule  = self._create_rule()
-		self.chain: Rule = self._get_chain()
-
-	def _create_rule(self) -> Rule:
-		raise NotImplementedError
-
-	def _get_chain(self) -> Chain:
-		raise NotImplementedError
-
-	def apply(self):
-		self.chain.insert_rule(self.rule)
-
-	def delete(self):	
-		self.chain.delete_rule(self.rule)
-
 class IPTableManager():
+	"""
+	Manage the iptables rule, make sure to clean them up when exiting
+	"""
 	def __init__(self):
+		"""
+		Initialize.
+		Initialize rules list
+		"""
 		self.rules_list = []
 	
 	def add_rule(self, rule:IPTablesRule):
+		"""
+		Add a rule to the IPtables applied rules and also to the classes list of applied rules
+
+		:param rule - rule to add
+		"""
 		self.rules_list.append(rule)
 		rule.apply()
 	
 	def __enter__(self):
+
+		"""
+		Constructor 
+
+		"""
 		return self
 
 	def __exit__(self, type, value, traceback):	
+
+		"""
+		Destructor
+		Remove that appear in our list of rules from systems applied rules.
+		"""
 		for rule in self.rules_list:
 			rule.delete()
 
+class IPTablesRule(ABC):
+	"""
+	Abstract IPTables rule to inherit and implement your IPTables rule form.
+	"""
+	def __init__(self):
+		"""
+		Define rule and chain
+		"""
+		self.rule: Rule  = self._create_rule()
+		self.chain: Rule = self._get_chain()
+
+	def _create_rule(self) -> Rule:
+		"""
+		Function that is called from main and must be implemented by inherting class. 
+		defines the rule 
+		"""
+		raise NotImplementedError
+
+	def _get_chain(self) -> Chain:
+		"""
+		Function that is called from main and must be implemented by inherting class. 
+		defines the chain 
+		"""
+		raise NotImplementedError
+
+	def apply(self):
+		"""
+		Add the rule to the list of rules that are enforced 
+		"""
+		self.chain.insert_rule(self.rule)
+
+	def delete(self):	
+		"""
+		Remove the rule from the list of rules that are enforced 
+		"""
+		self.chain.delete_rule(self.rule)
 
 class IPTablesICMPRule(IPTablesRule):
 	"""
@@ -45,6 +86,9 @@ class IPTablesICMPRule(IPTablesRule):
 		super().__init__()
 
 	def _create_rule(self) -> Rule:
+		""" 
+		Defines the rule.
+		"""
 		rule = Rule()
 		rule.protocol = ICMP_PROTOCOL
 		rule.create_target(DROP_TABLE)
@@ -52,6 +96,10 @@ class IPTablesICMPRule(IPTablesRule):
 		return rule
 
 	def _get_chain(self) -> Chain:
+
+		"""
+		defines the chain 
+		"""
 		return Chain(Table(Table.FILTER), OUTPUT_TABLE)
 
 class IPTablesLoopbackRule(IPTablesRule):
@@ -64,8 +112,8 @@ class IPTablesLoopbackRule(IPTablesRule):
 		super().__init__()
 
 	def _create_rule(self) -> Rule:
-		"""
-		Create rule that drops TCP packets on loopback device from/to specific TCP port
+		""" 
+		Defines the rule.
 		"""
 		rule = Rule()
 		rule.src = LOOPBACK_IP
@@ -83,4 +131,8 @@ class IPTablesLoopbackRule(IPTablesRule):
 		return rule
 
 	def _get_chain(self) -> Chain:
+		
+		"""
+		defines the chain 
+		"""
 		return Chain(Table(Table.FILTER), INPUT_TABLE)
