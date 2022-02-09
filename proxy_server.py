@@ -43,8 +43,8 @@ class ProxyServer(TunnelBase):
         :param sock - socket to receive from
         :param iptable_manager - manages IPTables rules. more under iptables.py
         """
-        assert sock == self.icmp_socket, "Unexpected socket Got ICMP from different socket then the one we know"
         try:
+            assert sock == self.icmp_socket, "Unexpected socket Got ICMP from different socket then the one we know"
             packet = IcmpServer.parse_icmp_packet(self.icmp_socket.recvfrom(ICMP_BUFFER_SIZE)[0])
             self.proxy_client_host = packet.src_host
 
