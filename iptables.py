@@ -41,46 +41,6 @@ class IPTablesRule(ABC):
 		"""
 		self.chain.delete_rule(self.rule)
 
-class IPTableManager():
-	"""
-	Manage the iptables rule, make sure to clean them up when exiting
-	"""
-	def __init__(self):
-		"""
-		Initialize.
-		Initialize rules list
-		"""
-		self.rules_list = []
-	
-	def add_rule(self, rule:IPTablesRule):
-		"""
-		Add a rule to the IPtables applied rules and also to the classes list of applied rules
-
-		:param rule - rule to add
-		"""
-		rule = Rule()
-		rule.protocol = ICMP_PROTOCOL
-		rule.create_target(DROP_TABLE)
-		self.rules_list.append(rule)
-		rule.apply()
-	
-	def __enter__(self):
-
-		"""
-		Constructor 
-
-		"""
-		return self
-
-	def __exit__(self, type, value, traceback):	
-
-		"""
-		Destructor
-		Remove that appear in our list of rules from systems applied rules.
-		"""
-		for rule in self.rules_list:
-			rule.delete()
-
 class IPTablesLoopbackRule(IPTablesRule):
 	"""
 	Class for IPTable rules that drop TCP packets on loopback device
@@ -141,3 +101,41 @@ class IPTablesICMPRule(IPTablesRule):
 		defines the chain 
 		"""
 		return Chain(Table(Table.FILTER), OUTPUT_TABLE)
+
+
+class IPTableManager():
+	"""
+	Manage the iptables rule, make sure to clean them up when exiting
+	"""
+	def __init__(self):
+		"""
+		Initialize.
+		Initialize rules list
+		"""
+		self.rules_list = []
+	
+	def add_rule(self, rule:IPTablesRule):
+		"""
+		Add a rule to the IPtables applied rules and also to the classes list of applied rules
+
+		:param rule - rule to add
+		"""
+		self.rules_list.append(rule)
+		rule.apply()
+	
+	def __enter__(self):
+
+		"""
+		Constructor 
+
+		"""
+		return self
+
+	def __exit__(self, type, value, traceback):	
+
+		"""
+		Destructor
+		Remove that appear in our list of rules from systems applied rules.
+		"""
+		for rule in self.rules_list:
+			rule.delete()
