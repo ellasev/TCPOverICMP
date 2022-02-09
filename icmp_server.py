@@ -30,11 +30,13 @@ class IcmpServer():
         Parse ICMP packet from data. 
 
         :param data - the whole packet.
-        
+
         @return the parsed packet, a ParsedIcmpPacket object.
         """
         packet = IP(data)
-        assert packet[ICMP].id == ICMP_ID, "Wrong ICMP ID"
+        if packet[ICMP].id != ICMP_ID:
+            print("Wrong ICMP ID")
+            return
 
         parsed_packet = ParsedIcmpPacket(icmp_type = packet[ICMP].type, src_host = packet[IP].src)
 

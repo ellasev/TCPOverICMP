@@ -46,16 +46,18 @@ class ProxyServer(TunnelBase):
         try:
             assert sock == self.icmp_socket, "Unexpected socket Got ICMP from different socket then the one we know"
             packet = IcmpServer.parse_icmp_packet(self.icmp_socket.recvfrom(ICMP_BUFFER_SIZE)[0])
-            self.proxy_client_host = packet.src_host
+            
+            if packet:
+                self.proxy_client_host = packet.src_host
 
-            if packet.icmp_type == ICMP_ECHO_REQUEST:
-                if not self.tcp_socket:
-                    self._open_tcp_socket(packet.remote_dst_port)
-                    tcp_rule = IPTablesLoopbackRule(port=self.tcp_socket.listen_port, is_server=True)
-                    iptable_manager.add_rule(tcp_rule)
-                self.tcp_socket.send(packet.data)
-            else:
-                print(f'Wrong ICMP type: {packet.icmp_type}')
+                if packet.icmp_type == ICMP_ECHO_REQUEST:
+                    if not self.tcp_socket:
+                        self._open_tcp_socket(packet.remote_dst_port)
+                        tcp_rule = IPTablesLoopbackRule(port=self.tcp_socket.listen_port, is_server=True)
+                        iptable_manager.add_rule(tcp_rule)
+                    self.tcp_socket.send(packet.data)
+                else:
+                    print(f'Wrong ICMP type: {packet.icmp_type}')
         except Exception as e:
             print(traceback.format_exc())
             print(e)

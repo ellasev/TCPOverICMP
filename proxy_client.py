@@ -40,7 +40,7 @@ class ProxyClient(TunnelBase):
         try:
             packet = IcmpServer.parse_icmp_packet(self.icmp_socket.recvfrom(ICMP_BUFFER_SIZE)[0])
 
-            if packet.icmp_type == ICMP_ECHO_REPLY:
+            if packet and packet.icmp_type == ICMP_ECHO_REPLY:
                # print("[ProxyClient] Parsed ICMP packet from proxy server")
                 self.tcp_socket.send(packet.data)
         except ValueError:
