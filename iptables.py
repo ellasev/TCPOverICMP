@@ -92,7 +92,6 @@ class IPTablesICMPRule(IPTablesRule):
 		rule = Rule()
 		rule.protocol = ICMP_PROTOCOL
 		rule.create_target(DROP_TABLE)
-		rule.src = self.ip
 		return rule
 
 	def _get_chain(self) -> Chain:
